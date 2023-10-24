@@ -13,11 +13,16 @@
 
 #define VIEW_DISTANCE 200
 
+#define ANIM_SPEED 0.02
+#define ANIM_STRENGTH 0.5
+
 int world[WORLD_SIZE_X][WORLD_SIZE_Y][WORLD_SIZE_Z] = {0};
 int selectedBlockX = WORLD_SIZE_X / 2;
 int selectedBlockY = 10;
 int selectedBlockZ = WORLD_SIZE_Z / 2;
 bool blockSelected = true;
+
+float anim = 0.0;
 
 GLuint gametexture[6]; // Array to store textures
 
@@ -119,12 +124,11 @@ void selectTexture(int index) {
     glBindTexture(GL_TEXTURE_2D, gametexture[index % 6]);
 }
 
-void drawTexturedCube(float x, float y, float z, int blockType) {
+void drawTexturedCube(float x, float y, float z) {
     glPushMatrix();
     glTranslatef(x, y, z);
 
     glEnable(GL_TEXTURE_2D);
-    selectTexture(blockType);
 
     glBegin(GL_QUADS);
 
@@ -203,25 +207,24 @@ void drawTexturedCube(float x, float y, float z, int blockType) {
     glPopMatrix();
 }
 
-void drawBillboardFace(float x, float y, float z, int blockType) {
+void drawBillboardFace(float x, float y, float z) {
     glPushMatrix();
     glTranslatef(x, y, z);
 
     glEnable(GL_TEXTURE_2D);
-    selectTexture(blockType);
 
     glBegin(GL_QUADS);
 
     glNormal3f(0.0, 1.0, 0.0);
 
     glTexCoord2f(0, 0);
-    glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, 2);
+    glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, 2.5);
     glTexCoord2f(1, 0);
-    glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE + 2);
+    glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE + 2.5);
     glTexCoord2f(1, 1);
-    glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE + 2);
+    glVertex3f(CUBE_SIZE / 2+cos(anim+x*0.3)*ANIM_STRENGTH, CUBE_SIZE / 2, -CUBE_SIZE + 2.5 +sin(anim+x*0.3)*ANIM_STRENGTH);
     glTexCoord2f(0, 1);
-    glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, 2);
+    glVertex3f(-CUBE_SIZE / 2+sin(anim+z*0.3)*ANIM_STRENGTH, CUBE_SIZE / 2, 2.5 +cos(anim+z*0.3)*ANIM_STRENGTH);
 
     glEnd();
 
@@ -262,11 +265,13 @@ void display() {
                 (cubeY < VIEW_DISTANCE && cubeY > -VIEW_DISTANCE) &&
                 (cubeZ < VIEW_DISTANCE && cubeZ > -VIEW_DISTANCE)
                 ){
-                if (blockType != 0 && blockType != 3) {
-                    drawTexturedCube(cubeX, cubeY, cubeZ, blockType - 1);
-                } else if (blockType == 3) {
-                    drawBillboardFace(cubeX, cubeY, cubeZ, blockType - 1);
-                }
+                    if (blockType != 0 && blockType != 3) {
+                        selectTexture(blockType - 1);
+                        drawTexturedCube(cubeX, cubeY, cubeZ);
+                    } else if (blockType == 3) {
+                        selectTexture(blockType - 1);
+                        drawBillboardFace(cubeX, cubeY, cubeZ);
+                    }
                 }
             }
         }
@@ -326,24 +331,34 @@ void keyboard(unsigned char key, int x, int y) {
     glutPostRedisplay();
 }
 
+void updateAnimation() {
+    anim += ANIM_SPEED;
+    if (anim > 3.0) anim = -anim;
+    glutPostRedisplay();
+    glutTimerFunc(16, updateAnimation, 0); // Call every 16 milliseconds (about 60 frames per second)
+}
+
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(700, 700);
     glutCreateWindow("cubegame");
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable( GL_LINE_SMOOTH );
+    glEnable( GL_POLYGON_SMOOTH );
+    glDisable(GL_MULTISAMPLE);
     init();
     
     generateWorld();
 
-    gametexture[0] = SOIL_load_OGL_texture("texture1.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-    gametexture[1] = SOIL_load_OGL_texture("texture2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-    gametexture[2] = SOIL_load_OGL_texture("texture3.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-    gametexture[3] = SOIL_load_OGL_texture("texture4.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-    gametexture[4] = SOIL_load_OGL_texture("texture5.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
-    gametexture[5] = SOIL_load_OGL_texture("texture6.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y);
+    gametexture[0] = SOIL_load_OGL_texture("texture1.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    gametexture[1] = SOIL_load_OGL_texture("texture2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    gametexture[2] = SOIL_load_OGL_texture("texture3.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    gametexture[3] = SOIL_load_OGL_texture("texture4.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    gametexture[4] = SOIL_load_OGL_texture("texture5.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    gametexture[5] = SOIL_load_OGL_texture("texture6.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
 
     for (int i = 0; i < 6; i++) {
         glBindTexture(GL_TEXTURE_2D, gametexture[i]);
@@ -356,6 +371,7 @@ int main(int argc, char** argv) {
     }
 
     glutDisplayFunc(display);
+    glutTimerFunc(0, updateAnimation, 0);
     glutKeyboardFunc(keyboard);
     glutMainLoop();
     return 0;
