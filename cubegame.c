@@ -10,9 +10,7 @@
 #define WORLD_SIZE_Y 20
 #define WORLD_SIZE_Z 100
 #define CUBE_SIZE 5.0
-
 #define VIEW_DISTANCE 200
-
 #define ANIM_SPEED 0.02
 #define ANIM_STRENGTH 0.5
 
@@ -96,16 +94,23 @@ void generateWorld() {
     for (int x = 0; x < WORLD_SIZE_X; x++) {
         for (int y = 0; y < WORLD_SIZE_Y; y++) {
             for (int z = 0; z < WORLD_SIZE_Z; z++) {
-                int noise = (int)(perlin2d(x, z, 0.1, 2, seed)*12);
-                if (y < WORLD_SIZE_Y / 5 - 2 + noise) { world[x][y][z] = 2; }
-                else if (y < WORLD_SIZE_Y / 5 - 1 + noise) { world[x][y][z] = 1; }
-                else if (y < WORLD_SIZE_Y / 5 + noise) {
-                  if (y > 7) { world[x][y][z] = 4; }
-                  else { world[x][y][z] = 5; }
+                int noise = (int)(perlin2d(x, z, 0.1, 2, seed) * 12);
+
+                if (y < WORLD_SIZE_Y / 5 - 2 + noise) {
+                    world[x][y][z] = 2;
+                } else if (y < WORLD_SIZE_Y / 5 - 1 + noise) {
+                    world[x][y][z] = 1;
+                } else if (y < WORLD_SIZE_Y / 5 + noise) {
+                    if (y > 7) {
+                        world[x][y][z] = 4;
+                    } else {
+                        world[x][y][z] = 5;
+                    }
+                } else if (y > 8 && y < WORLD_SIZE_Y / 5 + 1 + noise && rand() % 20 == 1) {
+                    world[x][y][z] = 3;
+                } else if (y < 8 && world[x][y][z] == 0) {
+                    world[x][y][z] = 6;
                 }
-                else if (y > 8 && y < WORLD_SIZE_Y / 5 + 1 + noise && rand() % 20 == 1) { world[x][y][z] = 3; }
-                
-                if (y < 8 && world[x][y][z] == 0) world[x][y][z] = 6;
             }
         }
     }
@@ -117,7 +122,6 @@ void init() {
     glMatrixMode(GL_PROJECTION);
     glOrtho(-50, 50, -50, 50, -1000, 1000);
     glMatrixMode(GL_MODELVIEW);
-    
 }
 
 void selectTexture(int index) {
@@ -250,7 +254,7 @@ void display() {
     GLfloat diffuseColor[] = {1.0, 1.0, 1.0, 1.0};
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseColor);
 
-    gluLookAt(30, 30, 30, 0, 0, 0, 0, 1, 0);
+    gluLookAt(1, 1, 1, -1, -1, -1, 0, 1, 0);
 
     for (int x = 0; x < WORLD_SIZE_X; x++) {
         for (int y = 0; y < WORLD_SIZE_Y; y++) {
@@ -339,6 +343,7 @@ void updateAnimation() {
 }
 
 int main(int argc, char** argv) {
+    generateWorld();
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(700, 700);
@@ -346,12 +351,10 @@ int main(int argc, char** argv) {
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable( GL_LINE_SMOOTH );
-    glEnable( GL_POLYGON_SMOOTH );
+    glEnable(GL_LINE_SMOOTH);
+    glEnable(GL_POLYGON_SMOOTH);
     glDisable(GL_MULTISAMPLE);
     init();
-    
-    generateWorld();
 
     gametexture[0] = SOIL_load_OGL_texture("texture1.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
     gametexture[1] = SOIL_load_OGL_texture("texture2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
@@ -364,8 +367,8 @@ int main(int argc, char** argv) {
         glBindTexture(GL_TEXTURE_2D, gametexture[i]);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glBindTexture(GL_TEXTURE_2D, 0);
         if (gametexture[i] == 0) { printf("ERROR: Texture loading failed.\n"); return 1; }
     }
