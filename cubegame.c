@@ -334,7 +334,7 @@ void keyboard(unsigned char key, int x, int y) {
             break;
         case 'p':
             int currentBlockType = world[selectedBlockX][selectedBlockY][selectedBlockZ];
-            currentBlockType = (currentBlockType + 1) % 7;
+            currentBlockType = (currentBlockType + 1) % 8;
             world[selectedBlockX][selectedBlockY][selectedBlockZ] = currentBlockType;
             break;
     }
