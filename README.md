@@ -11,7 +11,7 @@ You need to install Git, freeglut and SOIL development files and GNU GCC compile
 
 Fedora:
 ````
-sudo dnf install git freeglut-devel SOIL-devel gcc cmake
+sudo dnf install git freeglut-devel SOIL-devel gcc
 ````
 
 Then clone repository and compile source code:

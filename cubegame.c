@@ -14,7 +14,7 @@
 #define ANIM_SPEED 0.02
 #define ANIM_STRENGTH 0.5
 
-int world[WORLD_SIZE_X][WORLD_SIZE_Y][WORLD_SIZE_Z] = {0};
+int world[WORLD_SIZE_X][WORLD_SIZE_Y][WORLD_SIZE_Z] = {-1};
 int selectedBlockX = WORLD_SIZE_X / 2;
 int selectedBlockY = 10;
 int selectedBlockZ = WORLD_SIZE_Z / 2;
@@ -22,7 +22,7 @@ bool blockSelected = true;
 
 float anim = 0.0;
 
-GLuint gametexture[6]; // Array to store textures
+GLuint textureAtlas;
 
 static int hash[] = {208,34,231,213,32,248,233,56,161,78,24,140,71,48,140,254,245,255,247,247,40,
                      185,248,251,245,28,124,204,204,76,36,1,107,28,234,163,202,224,245,128,167,204,
@@ -97,19 +97,19 @@ void generateWorld() {
                 int noise = (int)(perlin2d(x, z, 0.1, 2, seed) * 12);
 
                 if (y < WORLD_SIZE_Y / 5 - 2 + noise) {
-                    world[x][y][z] = 2;
+                    world[x][y][z] = 6; //stone
                 } else if (y < WORLD_SIZE_Y / 5 - 1 + noise) {
-                    world[x][y][z] = 1;
+                    world[x][y][z] = 1; //dirt
                 } else if (y < WORLD_SIZE_Y / 5 + noise) {
                     if (y > 7) {
-                        world[x][y][z] = 4;
+                        world[x][y][z] = 5; //grass
                     } else {
-                        world[x][y][z] = 5;
+                        world[x][y][z] = 4; //sand
                     }
                 } else if (y > 8 && y < WORLD_SIZE_Y / 5 + 1 + noise && rand() % 20 == 1) {
-                    world[x][y][z] = 3;
+                    world[x][y][z] = 7; //flower
                 } else if (y < 8 && world[x][y][z] == 0) {
-                    world[x][y][z] = 6;
+                    world[x][y][z] = 3; //water
                 }
             }
         }
@@ -124,116 +124,124 @@ void init() {
     glMatrixMode(GL_MODELVIEW);
 }
 
-void selectTexture(int index) {
-    glBindTexture(GL_TEXTURE_2D, gametexture[index % 6]);
+void calculateTextureCoordinates(int blockType, float* texCoords) {
+    int atlasSize = 4; // Assuming a 4x4 atlas
+    int row = (blockType - 1) / atlasSize; // Calculate row from the adjusted division
+    int col = (blockType - 1) % atlasSize; // Calculate column from the adjusted remainder
+
+    float tileSize = 1.0 / atlasSize;
+    float startU = col * tileSize;
+    float startV = (atlasSize - 1 - row) * tileSize; // Adjusting for the correct order
+
+    texCoords[0] = startU;
+    texCoords[1] = startV;
+    texCoords[2] = startU + tileSize;
+    texCoords[3] = startV;
+    texCoords[4] = startU + tileSize;
+    texCoords[5] = startV + tileSize;
+    texCoords[6] = startU;
+    texCoords[7] = startV + tileSize;
 }
 
-void drawTexturedCube(float x, float y, float z) {
+void drawTexturedCube(float x, float y, float z, int blockType) {
     glPushMatrix();
     glTranslatef(x, y, z);
-
-    glEnable(GL_TEXTURE_2D);
 
     glBegin(GL_QUADS);
 
     // Define texture coordinates for each face of the cube
     // Bottom face
     glNormal3f(0.0, -1.0, 0.0);
-    glTexCoord2f(0, 0);
+    float texCoords[8];
+    calculateTextureCoordinates(blockType, texCoords);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
 
     // Top face
     glNormal3f(0.0, 1.0, 0.0);
-    glTexCoord2f(0, 0);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
 
     // Front face
     glNormal3f(0.0, 0.0, -1.0);
-    glTexCoord2f(0, 0);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
 
     // Back face
     glNormal3f(0.0, 0.0, 1.0);
-    glTexCoord2f(0, 0);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
 
     // Left face
     glNormal3f(-1.0, 0.0, 0.0);
-    glTexCoord2f(0, 0);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
 
     // Right face
     glNormal3f(1.0, 0.0, 0.0);
-    glTexCoord2f(0, 0);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE / 2);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, CUBE_SIZE / 2);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(CUBE_SIZE / 2, CUBE_SIZE / 2, -CUBE_SIZE / 2);
 
     glEnd();
 
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-
     glPopMatrix();
 }
 
-void drawBillboardFace(float x, float y, float z) {
+void drawBillboardFace(float x, float y, float z, int blockType) {
     glPushMatrix();
     glTranslatef(x, y, z);
-
-    glEnable(GL_TEXTURE_2D);
 
     glBegin(GL_QUADS);
 
     glNormal3f(0.0, 1.0, 0.0);
-
-    glTexCoord2f(0, 0);
+    float texCoords[8];
+    calculateTextureCoordinates(blockType, texCoords);
+    glTexCoord2f(texCoords[0], texCoords[1]);
     glVertex3f(-CUBE_SIZE / 2, -CUBE_SIZE / 2, 2.5);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(texCoords[2], texCoords[3]);
     glVertex3f(CUBE_SIZE / 2, -CUBE_SIZE / 2, -CUBE_SIZE + 2.5);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(texCoords[4], texCoords[5]);
     glVertex3f(CUBE_SIZE / 2+cos(anim+x*0.3)*ANIM_STRENGTH, CUBE_SIZE / 2, -CUBE_SIZE + 2.5 +sin(anim+x*0.3)*ANIM_STRENGTH);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(texCoords[6], texCoords[7]);
     glVertex3f(-CUBE_SIZE / 2+sin(anim+z*0.3)*ANIM_STRENGTH, CUBE_SIZE / 2, 2.5 +cos(anim+z*0.3)*ANIM_STRENGTH);
 
     glEnd();
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
 
     glPopMatrix();
 }
@@ -248,10 +256,10 @@ void display() {
     GLfloat lightPosition[] = {0.5, 1.0, 0.5, 0.0};
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
-    GLfloat ambientColor[] = {0.4, 0.4, 0.4, 1.0};
+    GLfloat ambientColor[] = {0.4, 0.5, 0.6, 1.0};
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambientColor);
 
-    GLfloat diffuseColor[] = {1.0, 1.0, 1.0, 1.0};
+    GLfloat diffuseColor[] = {1.0, 0.9, 0.8, 1.0};
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseColor);
 
     gluLookAt(1, 1, 1, -1, -1, -1, 0, 1, 0);
@@ -264,18 +272,17 @@ void display() {
                 float cubeY = y * CUBE_SIZE - selectedBlockY * CUBE_SIZE;
                 float cubeZ = z * CUBE_SIZE - selectedBlockZ * CUBE_SIZE;
                 
-                if (
-                (cubeX < VIEW_DISTANCE && cubeX > -VIEW_DISTANCE) &&
-                (cubeY < VIEW_DISTANCE && cubeY > -VIEW_DISTANCE) &&
-                (cubeZ < VIEW_DISTANCE && cubeZ > -VIEW_DISTANCE)
-                ){
-                    if (blockType != 0 && blockType != 3) {
-                        selectTexture(blockType - 1);
-                        drawTexturedCube(cubeX, cubeY, cubeZ);
-                    } else if (blockType == 3) {
-                        selectTexture(blockType - 1);
-                        drawBillboardFace(cubeX, cubeY, cubeZ);
+                if ((cubeX < VIEW_DISTANCE && cubeX > -VIEW_DISTANCE) &&
+                    (cubeY < VIEW_DISTANCE && cubeY > -VIEW_DISTANCE) &&
+                    (cubeZ < VIEW_DISTANCE && cubeZ > -VIEW_DISTANCE)){
+                    glBindTexture(GL_TEXTURE_2D, textureAtlas);
+                    glEnable(GL_TEXTURE_2D);
+                    if (blockType != 0 && blockType != 7) {
+                        drawTexturedCube(cubeX, cubeY, cubeZ, blockType);
+                    } else if (blockType == 7) {
+                        drawBillboardFace(cubeX, cubeY, cubeZ, blockType);
                     }
+                    glDisable(GL_TEXTURE_2D);
                 }
             }
         }
@@ -355,23 +362,14 @@ int main(int argc, char** argv) {
     glEnable(GL_POLYGON_SMOOTH);
     glDisable(GL_MULTISAMPLE);
     init();
-
-    gametexture[0] = SOIL_load_OGL_texture("texture1.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-    gametexture[1] = SOIL_load_OGL_texture("texture2.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-    gametexture[2] = SOIL_load_OGL_texture("texture3.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-    gametexture[3] = SOIL_load_OGL_texture("texture4.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-    gametexture[4] = SOIL_load_OGL_texture("texture5.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-    gametexture[5] = SOIL_load_OGL_texture("texture6.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
-
-    for (int i = 0; i < 6; i++) {
-        glBindTexture(GL_TEXTURE_2D, gametexture[i]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glBindTexture(GL_TEXTURE_2D, 0);
-        if (gametexture[i] == 0) { printf("ERROR: Texture loading failed.\n"); return 1; }
-    }
+    
+    textureAtlas = SOIL_load_OGL_texture("textures.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    glBindTexture(GL_TEXTURE_2D, textureAtlas);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    if (textureAtlas == 0) { printf("ERROR: Texture loading failed.\n"); return 1; }
 
     glutDisplayFunc(display);
     glutTimerFunc(0, updateAnimation, 0);
